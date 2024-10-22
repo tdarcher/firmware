@@ -4,7 +4,7 @@
 #define GSM_BOOT D1
 #define CO2_PWR  D2     // the number of the pushbutton pin
 #define GSM_PWR  D3      // the number of the LED pin
-
+bool n = true;
 
 //SoftwareSerial mySerial(2,3); //RX,TX
 
@@ -64,12 +64,26 @@ void GSM(){
       break;
     }
   }
-  Serial.write(Serial1.read());   
+  Serial.write(Serial1.read());  
+
+
+// POWEROFF
+  digitalWrite(LED_BUILTIN,HIGH); //low is on
+  digitalWrite(GSM_PWR, HIGH); // low is on
+  digitalWrite(CO2_PWR, HIGH); // high is off
+  digitalWrite(GSM_BOOT, LOW); //pullup to HIGH
+  digitalWrite(GSM_RESET, LOW); //pullup to HIGH
 }
 
 
 void loop(){
-  
+  if (n){
+    //Serial.println(n);
+    GSM();
+    n=false;
+  };
+
+
   //Serial.println("Hello");
   /*digitalWrite(GSM_PWR, LOW);
   digitalWrite(CO2_PWR, LOW);
