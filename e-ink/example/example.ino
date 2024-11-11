@@ -1,8 +1,14 @@
+// only works with non mbed board
 #include <SPI.h>
 //EPD
 #include "Display_EPD_W21_spi.h"
 #include "Display_EPD_W21.h"
 #include "demo.h"  
+
+#define GSM_RESET D0
+#define GSM_BOOT D1
+#define CO2_PWR  D2     // the number of the pushbutton pin
+#define GSM_PWR  D3      // the number of the LED pin
 
 void setup() {
    pinMode(D9, INPUT);  //BUSY  D5
@@ -10,13 +16,13 @@ void setup() {
    pinMode(D1, OUTPUT); //DC   D3
    //pinMode(D1, OUTPUT); //CS   /gmd
    //SPI
-   pinMode(D2, OUTPUT); //CO2_PWR
-   pinMode(D3, OUTPUT); //GSM_PWR
+   pinMode(CO2_PWR, OUTPUT); //CO2_PWR
+   pinMode(GSM_PWR, OUTPUT); //GSM_PWR
    pinMode(LED_BUILTIN, OUTPUT);
    SPI.beginTransaction(SPISettings(10000000, MSBFIRST, SPI_MODE0)); 
    SPI.begin ();  
-   digitalWrite(D2,LOW);
-   digitalWrite(D3,HIGH);
+   digitalWrite(CO2_PWR,LOW);
+   digitalWrite(GSM_PWR,HIGH);
 }
 
 //Tips//
@@ -108,13 +114,13 @@ void loop() {
       EPD_HW_Init(); //Full screen refresh initialization.
       EPD_WhiteScreen_ALL(gImage_1); //To Display one image using full screen refresh.
       EPD_DeepSleep(); //Enter the sleep mode and please do not delete it, otherwise it will reduce the lifespan of the screen.
-      delay(10000); //Delay for 2s.
+      delay(1000); //Delay for 2s.
       //digitalWrite(D2,LOW);
       digitalWrite(LED_BUILTIN,LOW);
       EPD_HW_Init(); //Full screen refresh initialization.
       EPD_WhiteScreen_White(); //Clear screen function.
       EPD_DeepSleep(); //Enter the sleep mode and please do not delete it, otherwise it will reduce the lifespan of the screen.
-      delay(10000); //Delay for 2s.
+      delay(1000); //Delay for 2s.
       digitalWrite(LED_BUILTIN,HIGH);
       //digitalWrite(D2,HIGH);
       //digitalWrite(D3,HIGH);
