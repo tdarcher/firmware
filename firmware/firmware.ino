@@ -5,6 +5,9 @@
 #define CO2_PWR  D2     // the number of the pushbutton pin
 #define GSM_PWR  D3      // the number of the LED pin
 
+
+
+
 #define APN iot.1nce.net
 
 
@@ -131,8 +134,8 @@ void GSM_INIT(){
 
 void GSM_OFF(){
   // Turn OFF GSM
-  //digitalWrite(GSM_PWR, HIGH); // low is on
-  //digitalWrite(CO2_PWR, HIGH); // high is off
+  digitalWrite(GSM_PWR, HIGH); // low is on
+  digitalWrite(CO2_PWR, HIGH); // high is off
   digitalWrite(LED_BUILTIN,HIGH); //low is on 
   //digitalWrite(GSM_BOOT, LOW); //pullup to HIGH
   //digitalWrite(GSM_RESET, LOW); //pullup to HIGH
