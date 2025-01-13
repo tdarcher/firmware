@@ -1,6 +1,8 @@
+
 #include <SPI.h>
 #include <GxEPD2_BW.h>
 #include <Fonts/FreeMonoBold9pt7b.h>
+#include <Fonts/FreeSansBold9pt7b.h>
 #include <Wire.h>
 #include <SensirionI2CScd4x.h>
 
@@ -14,90 +16,147 @@
 #define GSM_RESET 0
 #define GSM_BOOT 1
 
-
 // Create display instance for 2.9" Waveshare e-Paper
 GxEPD2_BW<GxEPD2_290_T94_V2, GxEPD2_290_T94_V2::HEIGHT> display(GxEPD2_290_T94_V2(CS_PIN, DC_PIN, RST_PIN, BUSY_PIN));
 
 // Create scd4x object
 SensirionI2CScd4x scd4x;
 
-void eink_display(String text, String text2, String text3){
+void eink_display(uint16_t co2, float temperature, float humidity) {
   digitalWrite(CO2_PIN, LOW);
-  digitalWrite(GSM_PIN, HIGH);
+  digitalWrite(GSM_PIN, HIGH);  
+  
+  // Create strings inside this function
+  String text = "CO             ppm"; // Separate CO and subscript
+  String co2Value = ": " + String(co2);
+  String text2 = "Temperature: " + String(temperature) + " C";
+  String text3 = "Humidity: " + String(humidity) + " %";
+  
   display.init();
   display.setRotation(3);
-  display.setFont(&FreeMonoBold9pt7b);
+  display.setFont(&FreeSansBold9pt7b);
   display.setTextColor(GxEPD_BLACK);
+  
   display.setFullWindow();
   display.firstPage();
+  
   do {
     display.fillScreen(GxEPD_WHITE);
+    
+    // Print CO and subscript
     display.setCursor(10, 30);
-    display.print(text);
+    display.print(text); 
+    display.setCursor(37, 35); 
+    display.print("2"); 
+    display.setCursor(47, 30); 
+    display.print(co2Value); 
+    
+    // Print temperature and humidity
     display.setCursor(10, 60);
-    display.print(text2);
+    display.print(text2); 
     display.setCursor(10, 90);
-    display.print(text3);   
+    display.print(text3);    
+
+    // Draw CO2 level bar
+    int numBars = 0;
+    
+    if (co2 < 1000) {
+      numBars = 1;
+    } else if (co2 < 1500) {
+      numBars = 2;
+    } else if (co2 < 2000) {
+      numBars = 3;
+    } else {
+      numBars = 4;
+    }
+
+    // Draw the bars at the bottom of the screen
+    int barWidth = (display.width() - 20) / 4; // Width for each bar with some padding
+    int barHeight = 10; // Height of each bar
+    int yPosition = display.height() - barHeight - 10; // Position from bottom
+
+    for (int i = 0; i < numBars; i++) {
+      int xPosition = 10 + i * (barWidth + 5); // Position for each bar with spacing
+      display.fillRect(xPosition, yPosition, barWidth, barHeight, GxEPD_BLACK); // Draw filled rectangle for each bar
+    }
+
   } while (display.nextPage());
 }
 
 
-void EVERYTHING_OFF(){
+
+
+void EVERYTHING_OFF() {
   digitalWrite(GSM_PIN, HIGH); // high is off
   digitalWrite(CO2_PIN, HIGH); // high is off
-  digitalWrite(LED_BUILTIN,HIGH); //low is on 
-  digitalWrite(GSM_BOOT, LOW); //pullup to HIGH (As power is off this needs to be low)
-  digitalWrite(GSM_RESET, LOW); //pullup to HIGH (As power is off this needs to be low)
+  digitalWrite(LED_BUILTIN,HIGH); // low is on 
+  digitalWrite(GSM_BOOT, LOW); // pullup to HIGH (As power is off this needs to be low)
+  digitalWrite(GSM_RESET, LOW); // pullup to HIGH (As power is off this needs to be low)
 }
 
-
-void get_CO2(){
+void get_CO2() {
   uint16_t co2;
   float temperature;
   float humidity;
   uint16_t error;
   Wire.begin();
   scd4x.begin(Wire);
+  scd4x.setAutomaticSelfCalibration(1);
+  if (error) {
+    Serial.println("Error enabling automatic self-calibration");
+    return;
+  }
+
+  //error = scd4x.performForcedRecalibration(referenceCO2);
+  //if (error) {
+  //  Serial.println("Error performing forced recalibration");
+  //  return;
+  //}
+  //sleep(600000)
+
+
   char errorMessage[256];
   digitalWrite(CO2_PIN, LOW);
   digitalWrite(GSM_PIN, HIGH);
-  // Start periodic measurement
-  error = scd4x.startPeriodicMeasurement();
+  delay(500);
+  error = scd4x.stopPeriodicMeasurement();
   if (error) {
-    Serial.print("Error starting SCD41 measurement: ");
-    errorToString(error, errorMessage, 256);
-    Serial.println(errorMessage);
+    Serial.println("Error stopping periodic measurement");
+    return;
   }
-  delay(10000);
+  delay(500);
+  error = scd4x.measureSingleShot();
+  if (error) {
+    Serial.println("Error performing single shot measurement");
+    return;
+  }
+  delay(5000);
   error = scd4x.readMeasurement(co2, temperature, humidity);
   if (error) {
     Serial.print("Error reading measurement: ");
-    char errorMessage[256];
-    errorToString(error, errorMessage, 256);
+    errorToString(error, errorMessage, sizeof(errorMessage));
     Serial.println(errorMessage);
+    return; // Exit if there's an error reading the measurement.
   } else if (co2 == 0) {
     Serial.println("Invalid sample detected, skipping.");
+    return; // Exit if the sample is invalid.
   } else {
-    String text = "CO2: " + String(co2) + " ppm";
-    String text2 = "Temperature: " + String(temperature) + " C";
-    String text3 = "Humidity: " + String(humidity) + " %";
-    eink_display(text, text2, text3);
-    Wire.end();
+    eink_display(co2, temperature, humidity); 
+    Wire.end(); 
+    return; 
   }
 }
 
-
-
 void setup() {
   Serial.begin(115200);
+  
   EVERYTHING_OFF();
 }
-
 
 void loop() {
   get_CO2();
   EVERYTHING_OFF();
-  delay(15000);
+  delay(15000); // Delay between readings.
 }
 
 
