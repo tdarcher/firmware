@@ -1,3 +1,61 @@
+#include <SPI.h>
+#include <GxEPD2_BW.h>
+#include <Fonts/FreeMonoBold9pt7b.h>
+
+// Define pins for SPI interface
+#define CS_PIN 5
+#define DC_PIN 1
+#define RST_PIN 0
+#define BUSY_PIN 9
+
+// Define D2 pin
+#define CO2_PIN 2
+#define GSM_PIN 3
+
+// Create display instance for 2.9" Waveshare e-Paper
+GxEPD2_BW<GxEPD2_290_T94_V2, GxEPD2_290_T94_V2::HEIGHT> display(GxEPD2_290_T94_V2(CS_PIN, DC_PIN, RST_PIN, BUSY_PIN));
+
+void eink_display(String text){
+  digitalWrite(CO2_PIN, LOW);
+  digitalWrite(GSM_PIN, HIGH);
+  display.init();
+  display.setRotation(3);
+  display.setFont(&FreeMonoBold9pt7b);
+  display.setTextColor(GxEPD_BLACK);
+  
+  display.setFullWindow();
+  display.firstPage();
+  do {
+    display.fillScreen(GxEPD_WHITE);
+    display.setCursor(10, 30);
+    display.print(text);
+    display.setCursor(10, 60);
+    display.print("D2 is held LOW");
+  } while (display.nextPage());
+}
+
+
+
+void setup() {
+  Serial.begin(115200);
+  
+  // Set CO2 as output and hold it low (on)
+  pinMode(CO2_PIN, OUTPUT);
+  digitalWrite(CO2_PIN, HIGH);
+
+  // Set GSM as output and hold it high (off)
+  pinMode(GSM_PIN, OUTPUT);
+  digitalWrite(GSM_PIN, HIGH);
+
+}
+
+void loop() {
+  eink_display("Hello Carina");  
+  delay(5000);
+}
+
+
+/*
 //#include <SoftwareSerial.h>
 
 #define GSM_RESET D0
@@ -118,7 +176,7 @@ void GSM_INIT(){
   //Serial.println("2");
   //Serial1.println("AT+CFUN=0"); //turn off radio
   //wait_response();
-  //Serial.println("3");*/
+  //Serial.println("3");
   Serial1.println("AT+QBAND=1,20"); //select band 
   wait_response();
   //Serial.println("4");
@@ -127,7 +185,7 @@ void GSM_INIT(){
   //Serial.println("5");
   //Serial1.println("AT+QRST=1");  // restart module
   //wait_response();
-  //Serial.println("Done");*/
+  //Serial.println("Done");
   //delay(5000);
   GSM_OFF();
 }
@@ -191,3 +249,4 @@ void loop(){
   GSM();
 
 }
+*/
