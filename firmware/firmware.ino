@@ -1,28 +1,33 @@
 #include <SPI.h>
 #include <GxEPD2_BW.h>
 #include <Fonts/FreeMonoBold9pt7b.h>
+#include <Wire.h>
+#include <SensirionI2CScd4x.h>
 
 // Define pins for SPI interface
 #define CS_PIN 5
 #define DC_PIN 1
 #define RST_PIN 0
 #define BUSY_PIN 9
-
-// Define D2 pin
 #define CO2_PIN 2
 #define GSM_PIN 3
+#define GSM_RESET 0
+#define GSM_BOOT 1
+
 
 // Create display instance for 2.9" Waveshare e-Paper
 GxEPD2_BW<GxEPD2_290_T94_V2, GxEPD2_290_T94_V2::HEIGHT> display(GxEPD2_290_T94_V2(CS_PIN, DC_PIN, RST_PIN, BUSY_PIN));
 
-void eink_display(String text){
+// Create scd4x object
+SensirionI2CScd4x scd4x;
+
+void eink_display(String text, String text2, String text3){
   digitalWrite(CO2_PIN, LOW);
   digitalWrite(GSM_PIN, HIGH);
   display.init();
   display.setRotation(3);
   display.setFont(&FreeMonoBold9pt7b);
   display.setTextColor(GxEPD_BLACK);
-  
   display.setFullWindow();
   display.firstPage();
   do {
@@ -30,28 +35,69 @@ void eink_display(String text){
     display.setCursor(10, 30);
     display.print(text);
     display.setCursor(10, 60);
-    display.print("D2 is held LOW");
+    display.print(text2);
+    display.setCursor(10, 90);
+    display.print(text3);   
   } while (display.nextPage());
+}
+
+
+void EVERYTHING_OFF(){
+  digitalWrite(GSM_PIN, HIGH); // high is off
+  digitalWrite(CO2_PIN, HIGH); // high is off
+  digitalWrite(LED_BUILTIN,HIGH); //low is on 
+  digitalWrite(GSM_BOOT, LOW); //pullup to HIGH (As power is off this needs to be low)
+  digitalWrite(GSM_RESET, LOW); //pullup to HIGH (As power is off this needs to be low)
+}
+
+
+void get_CO2(){
+  uint16_t co2;
+  float temperature;
+  float humidity;
+  uint16_t error;
+  Wire.begin();
+  scd4x.begin(Wire);
+  char errorMessage[256];
+  digitalWrite(CO2_PIN, LOW);
+  digitalWrite(GSM_PIN, HIGH);
+  // Start periodic measurement
+  error = scd4x.startPeriodicMeasurement();
+  if (error) {
+    Serial.print("Error starting SCD41 measurement: ");
+    errorToString(error, errorMessage, 256);
+    Serial.println(errorMessage);
+  }
+  delay(10000);
+  error = scd4x.readMeasurement(co2, temperature, humidity);
+  if (error) {
+    Serial.print("Error reading measurement: ");
+    char errorMessage[256];
+    errorToString(error, errorMessage, 256);
+    Serial.println(errorMessage);
+  } else if (co2 == 0) {
+    Serial.println("Invalid sample detected, skipping.");
+  } else {
+    String text = "CO2: " + String(co2) + " ppm";
+    String text2 = "Temperature: " + String(temperature) + " C";
+    String text3 = "Humidity: " + String(humidity) + " %";
+    eink_display(text, text2, text3);
+    Wire.end();
+  }
 }
 
 
 
 void setup() {
   Serial.begin(115200);
-  
-  // Set CO2 as output and hold it low (on)
-  pinMode(CO2_PIN, OUTPUT);
-  digitalWrite(CO2_PIN, HIGH);
-
-  // Set GSM as output and hold it high (off)
-  pinMode(GSM_PIN, OUTPUT);
-  digitalWrite(GSM_PIN, HIGH);
-
+  EVERYTHING_OFF();
 }
 
+
 void loop() {
-  eink_display("Hello Carina");  
-  delay(5000);
+  get_CO2();
+  EVERYTHING_OFF();
+  delay(15000);
 }
 
 
